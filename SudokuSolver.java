@@ -1,10 +1,15 @@
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -22,13 +27,30 @@ import java.util.List;
 import java.util.Map;
 
 public class SudokuSolver extends Application {
+    private static Cell[][] cells = new Cell[9][9];
+    private static StackPane[][] grid = new StackPane[9][9];
+    private static int focusR;
+    private static int focusC;
+
+    public enum State {
+        UNCHANGED,
+        CHANGED,
+        SOLVED
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
     @Override
     public void start(Stage primaryStage) {
         VBox root = new VBox();
+        root.setOnMouseClicked(mouseEvent -> root.requestFocus());
+        Scene scene = new Scene(root, 370, 422);
 
-        for (int r = 0; r < Box.boxes.length; ++r) {
-            for (int c = 0; c < Box.boxes[0].length; ++c) {
-                Box.boxes[r][c] = new Box();
+        for (int r = 0; r < cells.length; ++r) {
+            for (int c = 0; c < cells[0].length; ++c) {
+                cells[r][c] = new Cell();
             }
         }
 
@@ -36,17 +58,62 @@ public class SudokuSolver extends Application {
         HBox[] rows = new HBox[9];
         for (int r = 0; r < rows.length; ++r) {
             rows[r] = new HBox();
-            for (int c = 0; c < Box.boxes.length; ++c) {
-                rows[r].getChildren().add(Box.boxes[r][c]);
+            for (int c = 0; c < cells.length; ++c) {
+                grid[r][c] = new StackPane(new Rectangle(40, 40), new Label(""));
+                ((Label) grid[r][c].getChildren().get(1)).setFont(Font.font("Times New Roman", 20));
+                grid[r][c].getChildren().get(0).setStyle("-fx-fill: white; -fx-stroke: black;");
+                rows[r].getChildren().add(grid[r][c]);
                 if (c % 3 == 2 && c != rows.length - 1) {
-                    rows[r].getChildren().add(new Line(0, 0, 0, 25));
+                    rows[r].getChildren().add(new Line(0, 0, 0,40));
                 }
             }
             rowHolder.getChildren().add(rows[r]);
             if (r % 3 == 2 && r != rows.length - 1) {
-                rowHolder.getChildren().add(new Line(0, 0, 300,0));
+                rowHolder.getChildren().add(new Line(0, 0, 370,0));
             }
         }
+
+        updateFocus(0, 0, 0, 0);
+
+        root.setOnKeyPressed(keyEvent -> {
+            if (keyEvent.getCode() == KeyCode.LEFT) {
+                if (focusC > 0) {
+                    updateFocus(focusR, focusC, focusR, --focusC);
+                }
+            } else if (keyEvent.getCode() == KeyCode.RIGHT) {
+                if (focusC < 8) {
+                    updateFocus(focusR, focusC, focusR, ++focusC);
+                }
+            } else if (keyEvent.getCode() == KeyCode.UP) {
+                if (focusR > 0) {
+                    updateFocus(focusR, focusC, --focusR, focusC);
+                }
+            } else if (keyEvent.getCode() == KeyCode.DOWN) {
+                if (focusR < 8) {
+                    updateFocus(focusR, focusC, ++focusR, focusC);
+                }
+            } else if (keyEvent.getCode() == KeyCode.DIGIT1) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("1");
+            } else if (keyEvent.getCode() == KeyCode.DIGIT2) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("2");
+            } else if (keyEvent.getCode() == KeyCode.DIGIT3) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("3");
+            } else if (keyEvent.getCode() == KeyCode.DIGIT4) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("4");
+            } else if (keyEvent.getCode() == KeyCode.DIGIT5) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("5");
+            } else if (keyEvent.getCode() == KeyCode.DIGIT6) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("6");
+            } else if (keyEvent.getCode() == KeyCode.DIGIT7) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("7");
+            } else if (keyEvent.getCode() == KeyCode.DIGIT8) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("8");
+            } else if (keyEvent.getCode() == KeyCode.DIGIT9) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("9");
+            } else if (keyEvent.getCode() == KeyCode.BACK_SPACE) {
+                ((Label) grid[focusR][focusC].getChildren().get(1)).setText("");
+            }
+        });
 
         FileChooser fileChooser = new FileChooser();
         fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));
@@ -55,20 +122,18 @@ public class SudokuSolver extends Application {
         HBox buttons = new HBox();
         Button solve = new Button("Solve");
         solve.setOnAction(actionEvent -> solve());
-        Button guess = new Button("Guess");
-        guess.setOnAction(actionEvent -> Box.guess(Box.minPossibilities()));
         Button clear = new Button("Clear");
-        clear.setOnAction(actionEvent -> Box.clearAll());
-        Button finish = new Button("Finish");
+        clear.setOnAction(actionEvent -> clearAll());
+        /*Button finish = new Button("Finish");
         finish.setOnAction(actionEvent -> {
-            while (Box.numSolved < 81) {
+            while (Cell.numSolved < 81) {
                 do {
-                    Box.changed = false;
-                    solve();
-                } while (Box.changed);
-                Box.guess(Box.minPossibilities());
+                    Cell.changed = false;
+                    prune();
+                } while (Cell.changed);
+                Cell.guess(Cell.minPossibilities());
             }
-        });
+        });*/
         Button chooseFile = new Button("Choose File");
         chooseFile.setOnAction(actionEvent -> {
             File file = fileChooser.showOpenDialog(primaryStage);
@@ -76,7 +141,8 @@ public class SudokuSolver extends Application {
                 loadFromFile(file);
             }
         });
-        buttons.getChildren().addAll(solve, guess, clear, finish, chooseFile);
+        //buttons.getChildren().addAll(solve, guess, clear, finish, chooseFile);
+        buttons.getChildren().addAll(clear, solve, chooseFile);
         HBox fileWriting = new HBox();
         TextField fileName = new TextField();
         Button writeFile = new Button("Write to File");
@@ -87,12 +153,84 @@ public class SudokuSolver extends Application {
         root.getChildren().addAll(rowHolder, ui);
 
         primaryStage.setTitle("Sudoku Solver");
-        Scene scene = new Scene(root, 300, 300);
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        root.requestFocus();
+    }
+
+    public void updateFocus(int oldR, int oldC, int newR, int newC) {
+        if (cells[oldR][oldC].isSolved()) {
+            grid[oldR][oldC].getChildren().get(0).setStyle("-fx-fill: green; -fx-stroke: black;");
+        } else {
+            grid[oldR][oldC].getChildren().get(0).setStyle("-fx-fill: white; -fx-stroke: black;");
+        }
+        grid[newR][newC].getChildren().get(0).setStyle("-fx-fill: lightblue; -fx-stroke: black;");
     }
 
     public void solve() {
+        solve(cells);
+    }
+
+    public boolean solve(Cell[][] cells) {
+        State state;
+        do {
+            state = prune(cells);
+        } while (state == State.CHANGED);
+        if (state == State.SOLVED) {
+            this.cells = cells;
+            return true;
+        }
+        int[] cell = minPossibilities(cells);
+        if (cell == null) {
+            return false;
+        } else {
+            for (Integer i : cells[cell[0]][cell[1]].getPotentialValues()) {
+                Cell[][] cellsClone = cloneCells(cells);
+                cellsClone[cell[0]][cell[1]].setSolved(i);
+                if (solve(cellsClone)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    public Cell[][] cloneCells(Cell[][] cells) {
+        Cell[][] out = new Cell[cells.length][cells[0].length];
+        for (int r = 0; r < cells.length; ++r) {
+            for (int c = 0; c < cells[0].length; ++c) {
+                out[r][c] = cells[r][c].clone();
+            }
+        }
+        return out;
+    }
+
+    public static int[] minPossibilities(Cell[][] cells) {
+        int[] out = new int[2];
+        for (int r = 0; r < 9; ++r) {
+            for (int c = 0; c < 9; ++c) {
+                if (!cells[r][c].isSolved()) {
+                    if (out[0] != 0 && out[1] != 0) {
+                        if (cells[r][c].getPotentialValues().size() <
+                                cells[out[0]][out[1]].getPotentialValues().size()) {
+                            out[0] = r;
+                            out[1] = c;
+                        }
+                    } else {
+                        out[0] = r;
+                        out[1] = c;
+                    }
+                    if (cells[out[0]][out[1]].getPotentialValues().size() == 0) {
+                        return null;
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    public State prune(Cell[][] cells) {
         class NumFilled {
             Integer num;
             boolean filled;
@@ -104,104 +242,116 @@ public class SudokuSolver extends Application {
                 filled = true;
             }
         }
+
+        State out = State.UNCHANGED;
+
         // rows
-        for (int r = 0; r < Box.boxes.length; ++r) {
+        for (int r = 0; r < cells.length; ++r) {
             List<NumFilled> containedList = new ArrayList<>(9);
-            for (int c = 0; c < Box.boxes[0].length; ++c) { // find which values are solved
-                Integer i = Box.boxes[r][c].getValue();
+            for (int c = 0; c < cells[0].length; ++c) { // find which values are solved
+                Integer i = cells[r][c].getValue();
                 if (i != null) {
                     containedList.add(new NumFilled(i));
                 }
             }
             for (int i = 0; i < containedList.size(); ++i) {
-                for (int c = 0; c < Box.boxes[0].length; ++c) { // cross out the solved values for all the boxes
+                for (int c = 0; c < cells[0].length; ++c) { // cross out the solved values for all the cells
                     if (!containedList.get(i).filled
-                            && Box.boxes[r][c].isSolved()
-                            && Box.boxes[r][c].getValue().equals(
+                            && cells[r][c].isSolved()
+                            && cells[r][c].getValue().equals(
                             containedList.get(i).num)) {
                         containedList.get(i).setFilled();
                     } else {
-                        Integer solved = Box.boxes[r][c].crossOut(containedList.get(i).num);
+                        Integer solved = cells[r][c].crossOut(containedList.get(i).num);
                         if (solved != -1) {
-                            containedList.add(new NumFilled(solved));
+                            out = State.CHANGED;
+                            if (solved != 0) {
+                                containedList.add(new NumFilled(solved));
+                            }
                         }
                     }
                 }
             }
             // if only one box has a number that is needed, fill it in
-            Map<Integer, Integer> boxesContaining = new HashMap<>();
-            for (int c = 0; c < Box.boxes[0].length; ++c) {
-                if (!Box.boxes[r][c].isSolved()) {
-                    for (Integer i : Box.boxes[r][c].getPotentialValues()) {
-                        if (boxesContaining.containsKey(i)) {
-                            if (boxesContaining.get(i).intValue() > 0) {
-                                boxesContaining.put(i, -1);
+            Map<Integer, Integer> cellsContaining = new HashMap<>();
+            for (int c = 0; c < cells[0].length; ++c) {
+                if (!cells[r][c].isSolved()) {
+                    for (Integer i : cells[r][c].getPotentialValues()) {
+                        if (cellsContaining.containsKey(i)) {
+                            if (cellsContaining.get(i) > 0) {
+                                cellsContaining.put(i, -1);
                             }
                         } else {
-                            boxesContaining.put(i, c);
+                            cellsContaining.put(i, c);
                         }
                     }
                 }
             }
-            for (Integer i : boxesContaining.keySet()) {
-                int c = boxesContaining.get(i);
+            for (Integer i : cellsContaining.keySet()) {
+                int c = cellsContaining.get(i);
                 if (c > 0) {
-                    Box.boxes[r][c].setSolved(i);
+                    cells[r][c].setSolved(i);
+                    out = State.CHANGED;
                 }
             }
         }
         // columns
-        for (int c = 0; c < Box.boxes[0].length; ++c) {
+        for (int c = 0; c < cells[0].length; ++c) {
             List<NumFilled> containedList = new ArrayList<>(9);
-            for (int r = 0; r < Box.boxes.length; ++r) {
-                Integer i = Box.boxes[r][c].getValue();
+            for (int r = 0; r < cells.length; ++r) {
+                Integer i = cells[r][c].getValue();
                 if (i != null) {
                     containedList.add(new NumFilled(i));
                 }
             }
             for (int i = 0; i < containedList.size(); ++i) {
-                for (int r = 0; r < Box.boxes.length; ++r) { // cross out the solved values for all the boxes
+                for (int r = 0; r < cells.length; ++r) { // cross out the solved values for all the cells
                     if (!containedList.get(i).filled
-                            && Box.boxes[r][c].isSolved()
-                            && Box.boxes[r][c].getValue().equals(
+                            && cells[r][c].isSolved()
+                            && cells[r][c].getValue().equals(
                             containedList.get(i).num)) {
                         containedList.get(i).setFilled();
                     } else {
-                        Integer solved = Box.boxes[r][c].crossOut(containedList.get(i).num);
-                        if (solved.intValue() != -1) {
-                            containedList.add(new NumFilled(solved));
+                        Integer solved = cells[r][c].crossOut(containedList.get(i).num);
+                        if (solved != -1) {
+                            out = State.CHANGED;
+                            if (solved != 0) {
+                                containedList.add(new NumFilled(solved));
+                            }
                         }
                     }
                 }
             }
-            Map<Integer, Integer> boxesContaining = new HashMap<>();
-            for (int r = 0; r < Box.boxes[0].length; ++r) {
-                if (!Box.boxes[r][c].isSolved()) {
-                    for (Integer i : Box.boxes[r][c].getPotentialValues()) {
-                        if (boxesContaining.containsKey(i)) {
-                            if (boxesContaining.get(i).intValue() > 0) {
-                                boxesContaining.put(i, -1);
+            Map<Integer, Integer> cellsContaining = new HashMap<>();
+            for (int r = 0; r < cells[0].length; ++r) {
+                if (!cells[r][c].isSolved()) {
+                    for (Integer i : cells[r][c].getPotentialValues()) {
+                        if (cellsContaining.containsKey(i)) {
+                            if (cellsContaining.get(i) > 0) {
+                                cellsContaining.put(i, -1);
                             }
                         } else {
-                            boxesContaining.put(i, r);
+                            cellsContaining.put(i, r);
                         }
                     }
                 }
             }
-            for (Integer i : boxesContaining.keySet()) {
-                int r = boxesContaining.get(i);
+            for (Integer i : cellsContaining.keySet()) {
+                int r = cellsContaining.get(i);
                 if (r > 0) {
-                    Box.boxes[r][c].setSolved(i);
+                    cells[r][c].setSolved(i);
+                    out = State.CHANGED;
                 }
             }
         }
 
-        // boxes
+        // cells
+        int numSolved = 0;
         for (int b = 0; b < 9; ++b) {
             List<NumFilled> containedList = new ArrayList<>(9);
             for (int r = (b - (b % 3)); r < b - (b % 3) + 3; ++r) {
                 for (int c = (b % 3) * 3; c < ((b % 3) + 1) * 3; ++c) {
-                    Integer i = Box.boxes[r][c].getValue();
+                    Integer i = cells[r][c].getValue();
                     if (i != null) {
                         containedList.add(new NumFilled(i));
                     }
@@ -211,44 +361,58 @@ public class SudokuSolver extends Application {
                 for (int r = (b - (b % 3)); r < b - (b % 3) + 3; ++r) {
                     for (int c = (b % 3) * 3; c < ((b % 3) + 1) * 3; ++c) {
                         if (!containedList.get(i).filled
-                                && Box.boxes[r][c].isSolved()
-                                && Box.boxes[r][c].getValue().equals(
+                                && cells[r][c].isSolved()
+                                && cells[r][c].getValue().equals(
                                 containedList.get(i).num)) {
                             containedList.get(i).setFilled();
                         } else {
-                            Integer solved = Box.boxes[r][c].crossOut(containedList.get(i).num);
-                            if (solved.intValue() != -1) {
-                                containedList.add(new NumFilled(solved));
+                            Integer solved = cells[r][c].crossOut(containedList.get(i).num);
+                            if (solved != -1) {
+                                out = State.CHANGED;
+                                if (solved != -1) {
+                                    out = State.CHANGED;
+                                    if (solved != 0) {
+                                        containedList.add(new NumFilled(solved));
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
 
-            Map<Integer, Integer> boxesContaining = new HashMap<>();
+            Map<Integer, Integer> cellsContaining = new HashMap<>();
             for (int r = (b - (b % 3)); r < b - (b % 3) + 3; ++r) {
                 for (int c = (b % 3) * 3; c < ((b % 3) + 1) * 3; ++c) {
-                    if (!Box.boxes[r][c].isSolved()) {
-                        for (Integer i : Box.boxes[r][c].getPotentialValues()) {
-                            if (boxesContaining.containsKey(i)) {
-                                if (boxesContaining.get(i).intValue() > 0) {
-                                    boxesContaining.put(i, -1);
+                    if (!cells[r][c].isSolved()) {
+                        for (Integer i : cells[r][c].getPotentialValues()) {
+                            if (cellsContaining.containsKey(i)) {
+                                if (cellsContaining.get(i) > 0) {
+                                    cellsContaining.put(i, -1);
                                 }
                             } else {
-                                boxesContaining.put(i, r * 9 + c);
+                                cellsContaining.put(i, r * 9 + c);
                             }
+                        }
+                    } else {
+                        ++numSolved;
+                        if (numSolved >= 81) {
+                            updateGrid(cells);
+                            return State.SOLVED;
                         }
                     }
                 }
             }
-            for (Integer i : boxesContaining.keySet()) {
-                int n = boxesContaining.get(i);
+            for (Integer i : cellsContaining.keySet()) {
+                int n = cellsContaining.get(i);
                 if (n > 0) {
-                    Box.boxes[(n - (n % 9)) / 9][n % 9].setSolved(i);
+                    cells[(n - (n % 9)) / 9][n % 9].setSolved(i);
+                    out = State.CHANGED;
                 }
             }
         }
-        Box.updateAll();
+        updateGrid(cells);
+        return out;
     }
 
     public static void writeToFile(String fileName) {
@@ -258,9 +422,9 @@ public class SudokuSolver extends Application {
                 BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true));
                 for (int r = 0; r < 9; ++r) {
                     for (int c = 0; c < 9; ++c) {
-                        String append = Box.boxes[r][c].getText();
+                        String append = ((Label) grid[r][c].getChildren().get(1)).getText();
                         if (append.length() != 0) {
-                            writer.append(Box.boxes[r][c].getText());
+                            writer.append(append);
                         }
                         if (c != 8) {
                             writer.append(",");
@@ -277,10 +441,10 @@ public class SudokuSolver extends Application {
         }
     }
     public static void loadFromFile(File file) {
-        Box.clearAll();
+        clearAll();
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
-            int c = -1;
+            int c;
             int row = 0;
             int col = 0;
             while (-1 != (c = reader.read())) {
@@ -290,7 +454,7 @@ public class SudokuSolver extends Application {
                     ++row;
                     col = 0;
                 } else if ('0' < c && '9' >= c) {
-                    Box.boxes[row][col].setText(String.valueOf(((char) c)));
+                    ((Label) grid[row][col].getChildren().get(1)).setText(String.valueOf(((char) c)));
                 }
             }
             reader.close();
@@ -299,9 +463,50 @@ public class SudokuSolver extends Application {
         } catch (IOException e) {
             System.out.println("An IO error ocurred");
         }
+        updateCells();
+    }
+    /**
+     * Gets the coordinates (r, c) of the box with the least possibilities
+     * @return a pair of coordinates, or null if the min number of possibilities
+     * is 0
+     */
+
+    public static void clearAll() {
+        for (Cell[] r : cells) {
+            for (Cell c : r) {
+                c.clear();
+            }
+        }
+        updateGrid(cells);
     }
 
-    public static void main(String[] args) {
-        launch(args);
+    private static void updateGrid(Cell[][] cells) {
+        for (int r = 0; r < cells.length; ++r) {
+            for (int c = 0; c < cells[0].length; ++c) {
+                Integer num = cells[r][c].getValue();
+                if (num != null) {
+                    ((Label) grid[r][c].getChildren().get(1)).setText(String.valueOf(num));
+                    if (r != focusR || c != focusC) {
+                        grid[r][c].getChildren().get(0).setStyle("-fx-fill: green; -fx-stroke: black;");
+                    }
+                } else {
+                    ((Label) grid[r][c].getChildren().get(1)).setText("");
+                    if (r != focusR || c != focusC) {
+                        grid[r][c].getChildren().get(0).setStyle("-fx-fill: white; -fx-stroke: black;");
+                    }
+                }
+            }
+        }
+    }
+
+    public static void updateCells() {
+        for (int r = 0; r < cells.length; ++r) {
+            for (int c = 0; c < cells[0].length; ++c) {
+                String text = ((Label) grid[r][c].getChildren().get(1)).getText();
+                if (!text.equals("")) {
+                    cells[r][c].setSolved(Integer.parseInt(text));
+                }
+            }
+        }
     }
 }
