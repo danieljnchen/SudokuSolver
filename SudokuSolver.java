@@ -46,7 +46,7 @@ public class SudokuSolver extends Application {
     public void start(Stage primaryStage) {
         VBox root = new VBox();
         root.setOnMouseClicked(mouseEvent -> root.requestFocus());
-        Scene scene = new Scene(root, 370, 422);
+        Scene scene = new Scene(root, 370, 424);
 
         for (int r = 0; r < cells.length; ++r) {
             for (int c = 0; c < cells[0].length; ++c) {
@@ -124,16 +124,6 @@ public class SudokuSolver extends Application {
         solve.setOnAction(actionEvent -> solve());
         Button clear = new Button("Clear");
         clear.setOnAction(actionEvent -> clearAll());
-        /*Button finish = new Button("Finish");
-        finish.setOnAction(actionEvent -> {
-            while (Cell.numSolved < 81) {
-                do {
-                    Cell.changed = false;
-                    prune();
-                } while (Cell.changed);
-                Cell.guess(Cell.minPossibilities());
-            }
-        });*/
         Button chooseFile = new Button("Choose File");
         chooseFile.setOnAction(actionEvent -> {
             File file = fileChooser.showOpenDialog(primaryStage);
@@ -141,7 +131,6 @@ public class SudokuSolver extends Application {
                 loadFromFile(file);
             }
         });
-        //buttons.getChildren().addAll(solve, guess, clear, finish, chooseFile);
         buttons.getChildren().addAll(clear, solve, chooseFile);
         HBox fileWriting = new HBox();
         TextField fileName = new TextField();
