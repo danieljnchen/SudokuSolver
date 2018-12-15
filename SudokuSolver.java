@@ -121,7 +121,10 @@ public class SudokuSolver extends Application {
         VBox ui = new VBox();
         HBox buttons = new HBox();
         Button solve = new Button("Solve");
-        solve.setOnAction(actionEvent -> solve());
+        solve.setOnAction(actionEvent -> {
+            updateCells();
+            solve();
+        });
         Button clear = new Button("Clear");
         clear.setOnAction(actionEvent -> clearAll());
         Button chooseFile = new Button("Choose File");
@@ -163,9 +166,7 @@ public class SudokuSolver extends Application {
 
     public boolean solve(Cell[][] cells) {
         State state;
-        do {
-            state = prune(cells);
-        } while (state == State.CHANGED);
+        while ((state = prune(cells)) == State.CHANGED) {}
         if (state == State.SOLVED) {
             this.cells = cells;
             return true;
